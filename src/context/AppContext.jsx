@@ -1,39 +1,35 @@
-import React, { createContext, useReducer, useEffect } from 'react';
-import AppReducer from '../reducer/AppReducer';
-import { getToken, getDataset } from '../services/api';
+import { createContext, useContext, useReducer, useEffect } from "react";
+import AppReducer from "../reducer/AppReducer";
+import { getToken, getDataset } from "../services/api";
 
-export const AppContext = createContext();
+const AppContext = createContext();
 
-
-const STUDENT_ID = 'E0423038';
-const PASSWORD = '649089';
-const SET = 'setA';
+const initialState = {
+  orders: [],
+  loading: true,
+};
 
 export const AppProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(AppReducer, {
-    orders: [],
-    filteredRestaurant: '',
-    loading: true,
-    error: null,
-  });
+  const [state, dispatch] = useReducer(AppReducer, initialState);
 
-  // Fetch data on app load
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Step 1: Get token (with set parameter)
-        const tokenResponse = await getToken(STUDENT_ID, PASSWORD, SET);
+        const tokenRes = await getToken();
 
-        // Step 2: Get dataset
-        const data = await getDataset();
-        dispatch({ type: 'SET_ORDERS', payload: data.orders || [] });
-      } catch (error) {
-        const errorMsg = error.response?.data?.message || error.message || 'Failed to fetch data';
-        console.error('Error in fetchData:', errorMsg);
-        dispatch({
-          type: 'SET_ERROR',
-          payload: errorMsg,
-        });
+        const data = await getDataset(
+          tokenRes.token,
+          tokenRes.dataUrl
+        );
+
+        console.log("DATA:", data);
+
+        // 🔴 MOST IMPORTANT LINE
+        dispatch({ type: "SET_DATA", payload: data.orders });
+
+      } catch (err) {
+        console.error("ERROR:", err);
+        dispatch({ type: "SET_DATA", payload: [] });
       }
     };
 
@@ -41,8 +37,10 @@ export const AppProvider = ({ children }) => {
   }, []);
 
   return (
-    <AppContext.Provider value={{ state, dispatch }}>
+    <AppContext.Provider value={{ ...state }}>
       {children}
     </AppContext.Provider>
   );
 };
+
+export const useApp = () => useContext(AppContext);
